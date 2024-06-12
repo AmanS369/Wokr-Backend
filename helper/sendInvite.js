@@ -71,7 +71,7 @@ export const sendInviteMail = async (workspace_name, email, name, token) => {
                       <p>Hi ${name},</p>
                       <p>Please click the link below to reset your password:</p>
                       <p>
-                        <a class="button" href="${process.env.INVITE_LINK}?token=${token}">Accept Invite </a>
+                        <a class="button" href="${process.env.INVITE_LINK}/${token}">Accept Invite </a>
                       </p>
                     </div>
                   </div>

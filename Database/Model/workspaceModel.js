@@ -12,7 +12,7 @@ const fileSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const members = new mongoose.Schema(
@@ -28,7 +28,7 @@ const members = new mongoose.Schema(
       default: "none",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 const workspaceSchema = new mongoose.Schema(
   {
@@ -50,7 +50,7 @@ const workspaceSchema = new mongoose.Schema(
     members: [members],
     files: [fileSchema],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Workspace = mongoose.model("Workspace", workspaceSchema);
