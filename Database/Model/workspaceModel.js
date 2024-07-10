@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 const permissionEnum = ["none", "READ", "EDIT"];
+import BoardSchema from "./boardModel.js";
 const fileSchema = new mongoose.Schema(
   {
     name: {
@@ -30,6 +31,7 @@ const members = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
 const workspaceSchema = new mongoose.Schema(
   {
     title: {
@@ -41,7 +43,6 @@ const workspaceSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
     admin: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -49,6 +50,12 @@ const workspaceSchema = new mongoose.Schema(
     },
     members: [members],
     files: [fileSchema],
+    boards: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "BoardSchema",
+      },
+    ],
   },
   { timestamps: true },
 );

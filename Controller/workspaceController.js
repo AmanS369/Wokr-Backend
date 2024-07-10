@@ -1,8 +1,8 @@
 import User from "../Database/Model/userModel.js";
 import Workspace from "../Database/Model/workspaceModel.js";
-import UserWorkspace from "../Database/Model/userWorkspace.js";
+import BoardSchema from "../Database/Model/boardModel.js";
 
-import emailQueue from "../Task/email_taskQueue.js";
+import { emailQueue, assigneeEmailQueue } from "../Task/email_taskQueue.js";
 import JWT from "jsonwebtoken";
 // import { fileURLToPath } from "url";
 // import { dirname } from "path";
@@ -246,89 +246,6 @@ export const sharedworkspace = async (req, res) => {
   }
 };
 
-// export const dcreateWorkspaceFile = async (req, res) => {
-//   try {
-//     const user = req.user._id;
-//     const fileName = req.body.fileName;
-//     const workspace_id = req.params.workspace_id?.toString();
-//     const uniqueFileName = `${fileName}_${workspace_id}`;
-
-//     const workspace = await Workspace.findById(workspace_id);
-
-//     if (!workspace) {
-//       return res.status(404).send({
-//         success: false,
-//         message: "Workspace not found",
-//       });
-//     }
-
-//     const __dirname = path.dirname(new URL(import.meta.url).pathname);
-//     const filePath = path.resolve(
-//       __dirname,
-//       "../Files",
-//       `${uniqueFileName}.txt`,
-//     );
-
-//     // Check if a file with the same name already exists in the workspace
-//     const fileWithSameName = workspace.files.find(
-//       (file) => file.name === uniqueFileName,
-//     );
-//     if (fileWithSameName) {
-//       return res.status(400).send({
-//         success: false,
-//         message: "A file with the same name already exists in the workspace",
-//       });
-//     }
-
-//     // Check permissions
-//     let hasPermission = user === workspace.admin._id.toString();
-//     console.log(workspace.admin._id.toString());
-
-//     if (!hasPermission) {
-//       const member = await workspace.members.find((m) =>
-//         m.member.equals(req.user._id),
-//       );
-
-//       hasPermission = member && member.permissions === "EDIT";
-//     }
-
-//     if (!hasPermission) {
-//       console.log("You don't have permission to create a file");
-//       return res.status(403).send({
-//         success: false,
-//         message: "You don't have permission to create a file",
-//       });
-//     }
-
-//     // Create the file
-//     await fs.writeFile(filePath, "");
-
-//     // Save file information in the database
-//     const fileData = {
-//       name: uniqueFileName,
-//       path: filePath,
-//     };
-//     console.log("the file4 name", uniqueFileName);
-//     // Push the fileData into the files array of the workspace
-//     workspace.files.push(fileData);
-
-//     // Save the updated workspace document
-//     await workspace.save();
-
-//     return res.status(200).send({
-//       success: true,
-//       message: "File Created Successfully",
-//       file: fileData,
-//     });
-//   } catch (e) {
-//     console.error(e);
-//     return res.status(500).send({
-//       success: false,
-//       message: "Something went wrong, please try again",
-//     });
-//   }
-// };
-
 export const createWorkspaceFile = async (req, res) => {
   try {
     const user = req.user._id;
@@ -415,7 +332,12 @@ export const createWorkspaceFile = async (req, res) => {
 
 export const getWorkspaceDetails = async (req, res) => {
   try {
-    const workspace = await Workspace.findOne({ _id: req.params.workspace_id });
+    const workspace = await Workspace.findOne({ _id: req.params.workspace_id })
+      .populate({
+        path: "boards",
+        select: "name",
+      })
+      .exec();
 
     if (!workspace) {
       return sendResponse(res, false, "Workspace not found");
@@ -488,29 +410,6 @@ export const saveFileController = async (req, res) => {
   }
 };
 
-export const sshowMembersController = async (req, res) => {
-  try {
-    const workspace_id = req.params.workspace_id;
-    const workspace = await Workspace.findById(workspace_id);
-    if (!workspace) {
-      return sendResponse(res, false, "Workspace not found", 404);
-    }
-    const { admin, members } = workspace;
-    const adminUser = await User.findById(admin);
-    const memberUsers = await User.find({
-      _id: { $in: members.map((m) => m.member) },
-    });
-    console.log(memberUsers, memberUsers);
-    return sendResponse(res, true, "Members and admin retrieved successfully", {
-      admin: memberUsers,
-      members: memberUsers,
-    });
-  } catch (e) {
-    console.error(e);
-    sendResponse(res, false, "Something went wrong, try again");
-  }
-};
-
 export const showMembersController = async (req, res) => {
   try {
     const workspace_id = req.params.workspace_id;
@@ -541,6 +440,7 @@ export const showMembersController = async (req, res) => {
       email: admin.email,
       permission: "ADMIN",
     };
+    console.log("ALl memeber", members, admin);
 
     // send Response with success = true
     sendResponse(res, true, "Members and admin retrieved successfully", {
@@ -552,5 +452,193 @@ export const showMembersController = async (req, res) => {
 
     // send Response with success = false
     sendResponse(res, false, "Failed to retrieve members and admin");
+  }
+};
+
+// export const deleteWorkspaceMember = aysnc(req,res)=>{
+//    try{
+//     const {workspace_id,user_id}
+
+//    }catch(e){
+//     console.error(e);
+//     sendResponse(res, false, "Something went wrong, try again");
+//    }
+// }
+
+export const createBoard = async (req, res) => {
+  try {
+    const user = req.user;
+    const { boardName } = req.body;
+    const workspace_id = req.params.workspace_id?.toString();
+    const uniqueBoardName = `${boardName}_${workspace_id}`;
+
+    const workspace = await Workspace.findById(workspace_id);
+
+    if (!workspace) {
+      return res.status(404).send({
+        success: false,
+        message: "Workspace not found",
+      });
+    }
+
+    // Check permissions
+    // const isAdmin = user._id.equals(workspace.admin);
+
+    // let hasPermission = isAdmin;
+
+    // if (!hasPermission) {
+    //   const member = workspace.members.find((m) => m.member.equals(user._id));
+
+    //   hasPermission = member && member.permissions === "EDIT";
+    // }
+
+    // if (!hasPermission) {
+    //   console.log("You don't have permission to create a Board");
+    //   return res.status(403).send({
+    //     success: false,
+    //     message: "You don't have permission to create a Board",
+    //   });
+    // }
+
+    const boardWithSameName = workspace.boards.find(
+      (boardId) => boardId.name === uniqueBoardName, // Assuming boardId contains the _id of boards
+    );
+
+    if (boardWithSameName) {
+      return res.status(400).send({
+        success: false,
+        message: "A Board with the same name already exists in the workspace",
+      });
+    }
+
+    // Create new Board document
+    const newBoard = new BoardSchema({
+      name: uniqueBoardName,
+      createdBy: user._id,
+      col: [
+        { title: "pending" },
+        { title: "progress" },
+        { title: "completed" },
+      ],
+    });
+
+    // Save the board to the database
+    newBoard.push;
+    await newBoard.save();
+
+    // Add board _id to workspace.boards array
+    workspace.boards.push(newBoard._id);
+
+    // Save the updated workspace document
+    await workspace.save();
+
+    return res.status(200).send({
+      success: true,
+      message: "Board Created Successfully",
+      board: newBoard,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send({
+      success: false,
+      message: "Something went wrong, please try again",
+    });
+  }
+};
+
+export const getAllAssignee = async (req, res) => {
+  try {
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send({
+      success: false,
+      message: "Something went wrong, please try again",
+    });
+  }
+};
+
+export const sendEmailAssignee = async (req, res) => {
+  try {
+    const { workspace_id, board_id, col_id, item_id } = req.params;
+    const { user_id } = req.body;
+
+    // Find the workspace by ID and populate members and admin
+    const workspace = await Workspace.findById(workspace_id)
+      .populate("members.member", "name email")
+      .populate("admin", "name email");
+
+    if (!workspace) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    // Check if the user is a member or admin of the workspace
+    const isMember = workspace.members.some(
+      (member) => member.member._id.toString() === user_id,
+    );
+    const isAdmin = workspace.admin._id.toString() === user_id;
+
+    if (!isMember && !isAdmin) {
+      return res
+        .status(404)
+        .json({ message: "User does not exist in the workspace" });
+    }
+
+    // Find the board by ID
+    const board = await BoardSchema.findById(board_id);
+
+    if (!board) {
+      return res.status(404).json({ message: "Board not found" });
+    }
+
+    // Find the column by ID within the board
+    const column = board.col.find((col) => col._id.toString() === col_id);
+
+    if (!column) {
+      return res.status(404).json({ message: "Column not found" });
+    }
+
+    // Find the item by ID within the column
+    const item = column.items.find((item) => item._id.toString() === item_id);
+
+    if (!item) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    // Check if the assignee already exists
+    const assigneeExists = item.assignee.find(
+      (assignee) => assignee.assignee.toString() === user_id,
+    );
+
+    if (assigneeExists) {
+      return res.status(400).json({ message: "Assignee already exists" });
+    }
+
+    // Create a new assignee object
+    const newAssignee = { assignee: user_id };
+
+    // Add the assignee to the item's assignees array
+    item.assignee.push(newAssignee);
+
+    // Save the board with the updated item
+    await board.save();
+
+    const user = await User.findById(user_id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    assigneeEmailQueue.add({
+      workspace: workspace,
+      email: user.email,
+      name: user.name,
+      board_name: board.name,
+    });
+    res.status(200).json({ message: "Assignee added successfully", user });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send({
+      success: false,
+      message: "Something went wrong, please try again",
+    });
   }
 };
